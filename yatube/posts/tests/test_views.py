@@ -10,6 +10,7 @@ from ..views import NUM_OF_POST
 User = get_user_model()
 
 
+
 class PostPagesTests(TestCase):
     @classmethod
     def setUpClass(cls):
@@ -26,7 +27,7 @@ class PostPagesTests(TestCase):
             text='Текст поста',
             group=cls.group,
         )
-
+        
     def setUp(self):
         self.authorized_author = Client()
         self.authorized_author.force_login(self.author)
@@ -63,6 +64,10 @@ class PostPagesTests(TestCase):
             response.context['page_obj'][0].id,
             self.post.id
         )
+        self.assertEqual(
+            response.context['page_obj'][0].image,
+            self.post.image
+        )
 
     def test_index_show_correct_context(self):
         """Шаблон index сформирован с правильным контекстом."""
@@ -95,6 +100,7 @@ class PostPagesTests(TestCase):
         self.assertEqual(first_page_object.author, self.author)
         self.assertEqual(first_page_object.group, self.group)
         self.assertEqual(first_page_object.id, self.post.id)
+        self.assertEqual(first_page_object.image, self.post.image)
 
     def test_post_edit_correct_context(self):
         response = self.authorized_author.get(

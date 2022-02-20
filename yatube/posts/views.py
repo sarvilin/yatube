@@ -4,7 +4,8 @@ from django.contrib.auth.decorators import login_required
 from django.core.paginator import Paginator, Page
 from django.shortcuts import render, get_object_or_404, redirect
 
-from .forms import PostForm
+
+from .forms import PostForm, CommentForm
 from .models import Post, Group, User
 
 NUM_OF_POST = 10
@@ -55,13 +56,15 @@ def profile(request, username):
 
 def post_detail(request, post_id):
     post = get_object_or_404(Post, pk=post_id)
-
     author = post.author
     number_of_posts_by_author = author.posts.count()
-
+    form = CommentForm(request.POST or None)
+    comments = post.comments.all()
     context = {
         'post': post,
+        'comments': comments,
         'number_of_posts_by_author': number_of_posts_by_author,
+        'form': form,
     }
     template = 'posts/post_detail.html'
     return render(request, template, context)
@@ -89,6 +92,7 @@ def post_create(request):
 
 @login_required
 def post_edit(request, post_id):
+    """Форма изменения поста."""
     post = get_object_or_404(Post, pk=post_id)
     if post.author != request.user:
         return redirect('posts:post_detail', post_id=post_id)
@@ -115,3 +119,15 @@ def pages_obj(
         num_of_post: int = NUM_OF_POST) -> Page:
     paginator = Paginator(post_list, num_of_post)
     return paginator.get_page(page_number)
+
+
+@login_required
+def add_comment(request, post_id):
+    post = Post.objects.get(pk=post_id)
+    form = CommentForm(request.POST or None)
+    if form.is_valid():
+        comment = form.save(commit=False)
+        comment.author = request.user
+        comment.post = post
+        comment.save()
+    return redirect('posts:post_detail', post_id=post_id)

@@ -1,10 +1,12 @@
+from linecache import cache
+
 from django.contrib.auth import get_user_model
 from django import forms
 from django.test import Client, TestCase
 from django.urls import reverse
 
 from ..forms import PostForm
-from ..models import Post, Group
+from ..models import Post, Group, Comment
 from ..views import NUM_OF_POST
 
 User = get_user_model()
@@ -26,6 +28,11 @@ class PostPagesTests(TestCase):
             author=cls.author,
             text='Текст поста',
             group=cls.group,
+        )
+        cls.comment = Comment.objects.create(
+            post=cls.post,
+            author=cls.user,
+            text='Text comment'
         )
         
     def setUp(self):
@@ -54,6 +61,7 @@ class PostPagesTests(TestCase):
                 self.assertTemplateUsed(response, template)
 
     def validate_context(self, response):
+        """Проверка полей контекста"""
         self.assertEqual(
             response.context['page_obj'][0].author.username,
             self.post.author.username)
@@ -86,12 +94,14 @@ class PostPagesTests(TestCase):
             response.context['group'], self.group)
 
     def test_profile_page_show_correct_context(self):
+        """Шаблон profile сформирован с правильным контекстом."""
         response = self.authorized_author.get(
             reverse('posts:profile', kwargs={'username': self.author})
         )
         self.validate_context(response)
 
     def test_post_detail_correct_context(self):
+        """Шаблон post_detail сформирован с правильным контекстом."""
         response = self.client.get(
             reverse('posts:post_detail', kwargs={'post_id': self.post.id})
         )
@@ -103,6 +113,7 @@ class PostPagesTests(TestCase):
         self.assertEqual(first_page_object.image, self.post.image)
 
     def test_post_edit_correct_context(self):
+        """Шаблон post_edit сформирован с правильным контекстом."""
         response = self.authorized_author.get(
             reverse('posts:post_edit', kwargs={'post_id': self.post.pk})
         )
@@ -116,9 +127,43 @@ class PostPagesTests(TestCase):
                 self.assertIsInstance(form_field, expected)
 
     def test_create_post_new_correct_context(self):
+        """Шаблон create_post сформирован с правильным контекстом."""
         response = self.authorized_client.get(reverse('posts:post_create'))
         self.assertIsInstance(response.context['form'], PostForm)
         self.assertIsNone(response.context.get('is_edit', None))
+
+    def test_authorized_can_leave_comment(self):
+        comments_count = Comment.objects.count()
+        form_data = {
+            'text': 'Text comment',
+        }
+        response = self.authorized_author.post(
+            reverse('posts:add_comment', kwargs={'post_id': self.post.pk}),
+            data=form_data,
+            follow=True
+        )
+        last_comment = Comment.objects.latest('created')
+        self.assertRedirects(response, reverse('posts:post_detail',
+                                               kwargs={'post_id': self.post.pk}))
+        self.assertEqual(Comment.objects.count(), comments_count + 1)
+        self.assertEqual(last_comment.text, form_data['text'])
+        self.assertEqual(last_comment.author, self.author)
+
+    def test_added_comment_is_on_post_detail_page(self):
+        response = self.client.get(reverse(
+            'posts:post_detail', kwargs={'post_id': self.post.pk})
+        )
+        self.assertIn(self.comment, response.context['comments'])
+
+    def test_cache_index_page(self):
+        """Тестирование использование кеширования"""
+        cache.clear()
+        response = self.authorized_client.get(reverse('posts:index'))
+        cache_check = response.content
+        post = Post.objects.get(pk=1)
+        post.delete()
+        response = self.authorized_client.get(reverse('posts:index'))
+        self.assertEqual(response.content, cache_check)
 
 
 class PaginatorViewsTest(TestCase):

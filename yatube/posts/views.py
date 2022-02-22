@@ -3,7 +3,7 @@ from typing import List
 from django.contrib.auth.decorators import login_required
 from django.core.paginator import Paginator, Page
 from django.shortcuts import render, get_object_or_404, redirect
-
+from django.views.decorators.cache import cache_page
 
 from .forms import PostForm, CommentForm
 from .models import Post, Group, User

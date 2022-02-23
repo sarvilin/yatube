@@ -6,11 +6,10 @@ from django.test import Client, TestCase
 from django.urls import reverse
 
 from ..forms import PostForm
-from ..models import Post, Group, Comment
+from ..models import Post, Group, Comment, Follow
 from ..views import NUM_OF_POST
 
 User = get_user_model()
-
 
 
 class PostPagesTests(TestCase):
@@ -18,7 +17,7 @@ class PostPagesTests(TestCase):
     def setUpClass(cls):
         super().setUpClass()
         cls.author = User.objects.create_user(username='author')
-        cls.user = User.objects.create_user(username='noname')
+        cls.user = User.objects.create_user(username='user')
         cls.group = Group.objects.create(
             title='Наименование группы',
             slug='test-slug',
@@ -34,7 +33,7 @@ class PostPagesTests(TestCase):
             author=cls.user,
             text='Text comment'
         )
-        
+
     def setUp(self):
         self.authorized_author = Client()
         self.authorized_author.force_login(self.author)
@@ -164,6 +163,34 @@ class PostPagesTests(TestCase):
         post.delete()
         response = self.authorized_client.get(reverse('posts:index'))
         self.assertEqual(response.content, cache_check)
+
+    def test_auth_user_follow(self):
+        """Авторизованный пользователь может подписываться на других
+        пользователей."""
+        self.authorized_client.get(
+            reverse('posts:profile_follow', kwargs={'username': self.author}))
+        self.assertTrue(Follow.objects.filter(
+            user=self.user,
+            author=self.author,
+        ).exists())
+
+    def test_auth_user_unfollow(self):
+        """Авторизованный пользователь может отписываться от других
+        пользователей."""
+        self.authorized_client.get(
+            reverse('posts:profile_unfollow', kwargs={'username': self.author}))
+        self.assertFalse(Follow.objects.filter(
+            user=self.user,
+            author=self.author,
+        ).exists())
+
+    def test_follow_page_nosubscribe(self):
+        """Проверяем, что посты не появляются если не подписан."""
+        response = self.authorized_client.get(reverse(
+            'posts:follow_index'
+        ))
+        post = Post.objects.get(id=self.post.pk)
+        self.assertNotIn(post, response.context['page_obj'])
 
 
 class PaginatorViewsTest(TestCase):

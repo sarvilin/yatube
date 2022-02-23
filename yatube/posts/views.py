@@ -3,7 +3,6 @@ from typing import List
 from django.contrib.auth.decorators import login_required
 from django.core.paginator import Paginator, Page
 from django.shortcuts import render, get_object_or_404, redirect
-from django.views.decorators.cache import cache_page
 
 from .forms import PostForm, CommentForm
 from .models import Post, Group, User, Follow
@@ -148,12 +147,14 @@ def follow_index(request):
     template = "posts/follow.html"
     return render(request, template, context)
 
+
 @login_required
 def profile_follow(request, username):
     author = get_object_or_404(User, username=username)
     if author != request.user:
         Follow.objects.get_or_create(user=request.user, author=author)
     return redirect('posts:profile', username=username)
+
 
 @login_required
 def profile_unfollow(request, username):

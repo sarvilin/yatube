@@ -142,8 +142,10 @@ class PostPagesTests(TestCase):
             follow=True
         )
         last_comment = Comment.objects.latest('created')
-        self.assertRedirects(response, reverse('posts:post_detail',
-                                               kwargs={'post_id': self.post.pk}))
+        self.assertRedirects(response, reverse(
+            'posts:post_detail',
+            kwargs={'post_id': self.post.pk}
+        ))
         self.assertEqual(Comment.objects.count(), comments_count + 1)
         self.assertEqual(last_comment.text, form_data['text'])
         self.assertEqual(last_comment.author, self.author)
@@ -178,7 +180,10 @@ class PostPagesTests(TestCase):
         """Авторизованный пользователь может отписываться от других
         пользователей."""
         self.authorized_client.get(
-            reverse('posts:profile_unfollow', kwargs={'username': self.author}))
+            reverse(
+                'posts:profile_unfollow',
+                kwargs={'username': self.author}
+            ))
         self.assertFalse(Follow.objects.filter(
             user=self.user,
             author=self.author,

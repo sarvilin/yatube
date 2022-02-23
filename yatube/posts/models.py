@@ -1,7 +1,6 @@
 from django.db import models
 from django.contrib.auth import get_user_model
 
-# from core.models import CreatedModel
 
 User = get_user_model()
 
@@ -80,4 +79,19 @@ class Comment(models.Model):
     created = models.DateTimeField(
         'Дата комментария',
         auto_now_add=True
+    )
+
+
+class Follow(models.Model):
+    user = models.ForeignKey(
+        User,
+        on_delete=models.CASCADE,
+        related_name='follower',
+        null=True,
+    )
+    author = models.ForeignKey(
+        User,
+        on_delete=models.CASCADE,
+        related_name='following',
+        null=True,
     )

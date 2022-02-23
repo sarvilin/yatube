@@ -50,7 +50,6 @@
         <div class="card my-4">
           <h5 class="card-header">Добавить комментарий:</h5>
           <div class="card-body">
-            <!-- action ведет на обработчик формы  -->
             <form method="post" action="{% url 'posts:add_comment' post.id %}">
             {% csrf_token %}
             <div class="form-group mb-2">

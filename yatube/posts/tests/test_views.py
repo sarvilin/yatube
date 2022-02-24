@@ -1,13 +1,12 @@
-from linecache import cache
-
 from django.contrib.auth import get_user_model
 from django import forms
+from django.core.cache import cache
 from django.test import Client, TestCase
 from django.urls import reverse
 
 from ..forms import PostForm
 from ..models import Post, Group, Comment, Follow
-from ..views import NUM_OF_POST
+from yatube.settings import NUM_OF_POST
 
 User = get_user_model()
 
@@ -131,37 +130,12 @@ class PostPagesTests(TestCase):
         self.assertIsInstance(response.context['form'], PostForm)
         self.assertIsNone(response.context.get('is_edit', None))
 
-    def test_authorized_can_leave_comment(self):
-        comments_count = Comment.objects.count()
-        form_data = {
-            'text': 'Text comment',
-        }
-        response = self.authorized_author.post(
-            reverse('posts:add_comment', kwargs={'post_id': self.post.pk}),
-            data=form_data,
-            follow=True
-        )
-        last_comment = Comment.objects.latest('created')
-        self.assertRedirects(response, reverse(
-            'posts:post_detail',
-            kwargs={'post_id': self.post.pk}
-        ))
-        self.assertEqual(Comment.objects.count(), comments_count + 1)
-        self.assertEqual(last_comment.text, form_data['text'])
-        self.assertEqual(last_comment.author, self.author)
-
-    def test_added_comment_is_on_post_detail_page(self):
-        response = self.client.get(reverse(
-            'posts:post_detail', kwargs={'post_id': self.post.pk})
-        )
-        self.assertIn(self.comment, response.context['comments'])
-
     def test_cache_index_page(self):
         """Тестирование использование кеширования"""
         cache.clear()
         response = self.authorized_client.get(reverse('posts:index'))
         cache_check = response.content
-        post = Post.objects.get(pk=1)
+        post = Post.objects.get(pk=self.post.pk)
         post.delete()
         response = self.authorized_client.get(reverse('posts:index'))
         self.assertEqual(response.content, cache_check)

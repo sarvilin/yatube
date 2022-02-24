@@ -1,5 +1,6 @@
 import shutil
 import tempfile
+from http import HTTPStatus
 
 from django.conf import settings
 from django.contrib.auth import get_user_model
@@ -7,7 +8,8 @@ from django.core.files.uploadedfile import SimpleUploadedFile
 from django.test import Client, TestCase, override_settings
 from django.urls import reverse
 
-from ..models import Group, Post
+from ..forms import CommentForm
+from ..models import Group, Post, Comment
 
 TEMP_MEDIA_ROOT = tempfile.mkdtemp(dir=settings.BASE_DIR)
 
@@ -20,6 +22,18 @@ class PostFormTests(TestCase):
     def setUpClass(cls):
         super().setUpClass()
         cls.author = User.objects.create_user(username='author')
+        small_gif = (
+            b'\x47\x49\x46\x38\x39\x61\x01\x00'
+            b'\x01\x00\x00\x00\x00\x21\xf9\x04'
+            b'\x01\x0a\x00\x01\x00\x2c\x00\x00'
+            b'\x00\x00\x01\x00\x01\x00\x00\x02'
+            b'\x02\x4c\x01\x00\x3b'
+        )
+        cls.uploaded = SimpleUploadedFile(
+            name='small.gif',
+            content=small_gif,
+            content_type='image/gif'
+        )
         cls.group = Group.objects.create(
             title='Тестовая группа',
             slug='slug',
@@ -29,8 +43,14 @@ class PostFormTests(TestCase):
             author=cls.author,
             text='Тестовый пост',
             group=cls.group,
+            image=cls.uploaded,
         )
-        cls.form = PostFormTests()
+        cls.comment = Comment.objects.create(
+            author=cls.author,
+            text='Тестовый коммент',
+            post=cls.post
+        )
+        cls.form = CommentForm()
 
     @classmethod
     def tearDownClass(cls):
@@ -44,37 +64,29 @@ class PostFormTests(TestCase):
     def test_create_post(self):
         """При отправке валидной формы создаётся новая запись."""
         posts_count = Post.objects.count()
-        small_gif = (
-            b'\x47\x49\x46\x38\x39\x61\x01\x00'
-            b'\x01\x00\x00\x00\x00\x21\xf9\x04'
-            b'\x01\x0a\x00\x01\x00\x2c\x00\x00'
-            b'\x00\x00\x01\x00\x01\x00\x00\x02'
-            b'\x02\x4c\x01\x00\x3b'
-        )
-        uploaded = SimpleUploadedFile(
-            name='small.gif',
-            content=small_gif,
-            content_type='image/gif'
-        )
         form_data = {
-            'text': 'Новый пост',
+            'text': self.post.text,
             'group': self.group.id,
-            'image': uploaded,
+            'image': self.post.image,
         }
-        self.authorized_author.post(
+        response = self.authorized_author.post(
             reverse('posts:post_create'),
             data=form_data,
             follow=True
         )
+        self.assertRedirects(
+            response, reverse(
+                'posts:profile',
+                kwargs={'username': self.author.username})
+        )
         self.assertEqual(Post.objects.count(), posts_count + 1)
-
-        post = Post.objects.latest('id')
-        self.assertEqual(post.text, form_data['text'])
-        self.assertEqual(post.group.id, form_data['group'])
-
-        self.assertTrue(Post.objects.filter(
-            text=form_data['text'],
-            image='posts/small.gif').exists(),
+        self.assertEqual(response.status_code, HTTPStatus.OK)
+        self.assertTrue(
+            Post.objects.filter(
+                group=form_data['group'],
+                text=form_data['text'],
+                image=form_data['image'],
+            ).exists()
         )
 
     def test_edit_post(self):
@@ -101,3 +113,35 @@ class PostFormTests(TestCase):
             follow=True)
         self.assertRedirects(response, '/auth/login/?next=/create/')
         self.assertEqual(posts_count, Post.objects.count())
+
+    def test_only_authorized_user_can_leave_comment(self):
+        comments_count = Comment.objects.count()
+        form_data = {
+            'text': 'Text comment',
+        }
+        response = self.authorized_author.post(
+            reverse('posts:add_comment', kwargs={'post_id': self.post.pk}),
+            data=form_data,
+            follow=True
+        )
+        last_comment = Comment.objects.latest('created')
+        self.assertRedirects(response, reverse(
+            'posts:post_detail',
+            kwargs={'post_id': self.post.pk}
+        ))
+        self.assertEqual(Comment.objects.count(), comments_count + 1)
+        self.assertEqual(last_comment.text, form_data['text'])
+        self.assertEqual(last_comment.author, self.author)
+
+        self.client.post(
+            reverse('posts:add_comment', kwargs={'post_id': self.post.pk}),
+            data=form_data,
+            follow=True
+        )
+        self.assertEqual(Comment.objects.count(), comments_count + 1)
+
+    def test_added_comment_is_on_post_detail_page(self):
+        response = self.authorized_author.get(reverse(
+            'posts:post_detail', kwargs={'post_id': self.post.pk})
+        )
+        self.assertIn(self.comment, response.context['comments'])

@@ -1,13 +1,10 @@
-from typing import List
-
 from django.contrib.auth.decorators import login_required
-from django.core.paginator import Paginator, Page
 from django.shortcuts import render, get_object_or_404, redirect
 
 from .forms import PostForm, CommentForm
 from .models import Post, Group, User, Follow
 
-NUM_OF_POST = 10
+from core.utils import pages_obj
 
 
 def index(request):
@@ -16,7 +13,10 @@ def index(request):
     page_number = request.GET.get('page')
     page_obj = pages_obj(post_list, page_number)
 
-    context = {'page_obj': page_obj}
+    context = {
+        'page_obj': page_obj,
+        'index': True,
+    }
     template = "posts/index.html"
     return render(request, template, context)
 
@@ -116,14 +116,6 @@ def post_edit(request, post_id):
     return render(request, 'posts/create_post.html', context)
 
 
-def pages_obj(
-        post_list: List[Post],
-        page_number: int,
-        num_of_post: int = NUM_OF_POST) -> Page:
-    paginator = Paginator(post_list, num_of_post)
-    return paginator.get_page(page_number)
-
-
 @login_required
 def add_comment(request, post_id):
     post = Post.objects.get(pk=post_id)
@@ -143,7 +135,10 @@ def follow_index(request):
     page_number = request.GET.get('page')
     page_obj = pages_obj(post_list, page_number)
 
-    context = {'page_obj': page_obj}
+    context = {
+        'page_obj': page_obj,
+        'follow': True,
+    }
     template = "posts/follow.html"
     return render(request, template, context)
 

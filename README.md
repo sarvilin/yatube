@@ -47,3 +47,8 @@ python3 yatube/manage.py migrate
 ```
 python3 yatube/manage.py runserver
 ```
+
+URL проекта:
+```
+http://127.0.0.1:8000/
+```

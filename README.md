@@ -1,19 +1,19 @@
 # Платформа для блогов
 
 Данный проект создан в рамках обучения Яндекс Практикум:
-```
-Авторы:  Сарвилин Алексей
-```
+
+## Описание
+Платформа для блогов. Возможность загрузки фото, подписка на авторов,
+лента избранных авторов. 
+
 
 ### Как запустить проект:
-
 Клонировать репозиторий и перейти в него в командной строке:
 ```
-git clone https://github.com/sarvilin/hw05_final
+git clone https://github.com/sarvilin/yatube.git
 ```
-
 ```
-cd hw05_final
+cd yatube
 ```
 
 Cоздать и активировать виртуальное окружение:
@@ -31,23 +31,19 @@ python3 -m pip install --upgrade pip
 ```
 pip install -r requirements.txt
 ```
-
 Сгенерировать и указать SECRET_KEY:
 ```
 создать файл:  hw05_final/yatube/yatube/.env
 добавить строку: SECRET_KEY = '<ВАШ СЕКРЕТНЫЙ КЛЮЧ>'
 ```
-
 Выполнить миграции:
 ```
 python3 yatube/manage.py migrate
 ```
-
 Запустить проект:
 ```
 python3 yatube/manage.py runserver
 ```
-
 URL проекта:
 ```
 http://127.0.0.1:8000/

@@ -33,7 +33,7 @@ pip install -r requirements.txt
 ```
 Сгенерировать и указать SECRET_KEY:
 ```
-создать файл:  hw05_final/yatube/yatube/.env
+создать файл:  yatube/yatube/yatube/.env
 добавить строку: SECRET_KEY = '<ВАШ СЕКРЕТНЫЙ КЛЮЧ>'
 ```
 Выполнить миграции:

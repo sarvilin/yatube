@@ -82,9 +82,10 @@ def post_create(request):
         form = PostForm()
         return render(request, template, {'form': form})
 
-    form = PostForm(request.POST or None,
-                    files=request.FILES or None,
-                    )
+    form = PostForm(
+        request.POST or None,
+        files=request.FILES or None,
+    )
     if not form.is_valid():
         return render(request, template, {'form': form})
     post = form.save(commit=False)
